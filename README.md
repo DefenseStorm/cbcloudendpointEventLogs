@@ -1,5 +1,9 @@
 CB Defense Integration for DefenseStorm
 
+to pull this repository and submodules:
+
+git clone --recurse-submodules https://github.com/alexDefenseStorm/cbdefenseEventLogs.git
+
 1. If this is the first integration on this DVM, Do the following:
 
   cp ds-integration/ds_events.conf to /etc/syslog-ng/conf.d
