@@ -6,46 +6,85 @@ import os
 import fcntl
 import json
 import requests
+import time
 
+sys.path.insert(0, '/usr/local/cbdefenseEventLogs/ds-integration')
 from DefenseStorm import DefenseStorm
 
 class integration(object):
 
+    auditlogs_CEF_field_mappings = {
+        'requestUrl': 'cs4',
+        'eventTime': 'rt',
+        'eventId': 'cs1',
+        'loginName': 'cs2',
+        'orgName': 'cs3',
+        'flagged': None,
+        'clientIp': 'src',
+        'verbose': None,
+        'description': 'name',
+        'category': 'cs5'
+    }
 
-    def get_audit_logs(self, url, api_key_query, connector_id_query, ssl_verify, proxies=None):
-        headers = {'X-Auth-Token': "{0}/{1}".format(api_key_query, connector_id_query)}
-        try:
-            response = requests.get("{0}/integrationServices/v3/auditlogs".format(url),
-                                    headers=headers,
-                                    timeout=15, proxies=proxies)
-    
-            if response.status_code != 200:
-                self.ds.log('ERROR', "Could not retrieve audit logs: {0}".format(response.status_code))
-                return False
-    
-            notifications = response.json()
-        except Exception as e:
-            self.ds.log('ERROR', "Exception {0} when retrieving audit logs".format(str(e)))
-            return None
-    
-        if notifications.get("success", False) != True:
-            self.ds.log('ERROR', "Unsuccessful HTTP response retrieving audit logs: {0}"
-                         .format(notifications.get("message")))
-            return False
-    
-        notifications = notifications.get("notifications", [])
-        if not notifications:
-            self.ds.log('INFO', "No audit logs available")
-            return False
-    
-        return notifications
-    
-    def cb_defense_server_request(self, url, api_key, connector_id, ssl_verify, proxies=None):
-        self.ds.log('INFO', "Attempting to connect to url: " + url)
+    auditlogs_CEF_custom_field_labels = {
+        'cs1Label' : 'eventId',
+        'cs2Label' : 'loginName',
+        'cs3Label' : 'orgName',
+        'cs4Label' : 'requestUrl',
+        'cs5Label' : 'category',
+        'cs6Label' : None,
+        'cn1Label' : None,
+        'cn2Label' : None,
+        'cn3Label' : None,
+        'flexDate1Label' : None,
+        'flexString1Label' : None,
+        'flexString2Label' : None
+    }
+
+    notifications_CEF_field_mappings = {
+        'link': 'cs1',
+        'threat_id': 'cs2',
+        'alert_id': 'cs3',
+        'rt': 'rt',
+        'severity': 'severity',
+        'act': 'act',
+        'dvc': 'dvc',
+        'dvchost': 'dvchost',
+        'name': 'name',
+        'signature': 'type',
+        'duser': 'duser',
+        'dom': 'dom',
+        'sntdom': 'sntdom',
+        'category': 'cs4'
+    }
+    notifications_CEF_custom_field_labels = {
+        'cs1Label' : 'link',
+        'cs2Label' : 'threat_id',
+        'cs3Label' : 'alert_id',
+        'cs4Label' : 'category',
+        'cs5Label' : None,
+        'cs6Label' : None,
+        'cn1Label' : None,
+        'cn2Label' : None,
+        'cn3Label' : None,
+        'flexDate1Label' : None,
+        'flexString1Label' : None,
+        'flexString2Label' : None
+    }
+
+    def read_input_file(self, filename):
+        with open(filename) as file:
+            data = file.readlines()
+        file.close()
+        return json.loads(data[0])
+
+
+    def cb_defense_server_request(self, url, path, api_key, connector_id, ssl_verify, proxies=None):
+        self.ds.log('INFO', "Attempting to connect to url: " + url + path)
     
         headers = {'X-Auth-Token': "{0}/{1}".format(api_key, connector_id)}
         try:
-            response = requests.get(url + '/integrationServices/v3/notification', headers=headers, timeout=15,
+            response = requests.get(url + path, headers=headers, timeout=15,
                                     verify=ssl_verify, proxies=proxies)
             self.ds.log('INFO', response)
         except Exception as e:
@@ -53,7 +92,6 @@ class integration(object):
             return None
         else:
             return response
-    
     
     def parse_cb_defense_response_cef(self, response):
         splitDomain = True
@@ -66,136 +104,186 @@ class integration(object):
         if response[u'success']:
     
             if len(response[u'notifications']) < 1:
-                self.ds.log('INFO', 'successfully connected, no alerts at this time')
+                #self.ds.log('INFO', 'successfully connected, no alerts at this time')
                 return None
     
             for note in response[u'notifications']:
+                entry = {}
                 if 'type' not in note:
                     note['type'] = 'THREAT'
     
                 if note['type'] == 'THREAT':
-                    signature = 'Active_Threat'
-                    seconds = str(note['eventTime'])[:-3]
-                    name = str(note['threatInfo']['summary'])
-                    severity = str(note['threatInfo']['score'])
+                    entry['signature'] = 'Active_Threat'
+                    entry['rt'] = str(note['eventTime'])
+                    entry['name'] = str(note['threatInfo']['summary'])
+                    entry['severity'] = str(note['threatInfo']['score'])
                     device_name = str(note['deviceInfo']['deviceName'])
                     user_name = str(note['deviceInfo']['email'])
-                    device_ip = str(note['deviceInfo']['internalIpAddress'])
-                    link = str(note['url'])
-                    tid = str(note['threatInfo']['incidentId'])
-                    timestamp = time.strftime("%b %d %Y %H:%M:%S", time.gmtime(int(seconds)))
-                    extension = ''
-                    extension += 'rt="' + timestamp + '"'
+                    entry['dvc'] = str(note['deviceInfo']['internalIpAddress'])
+                    entry['link'] = str(note['url'])
+                    entry['threat_id'] = str(note['threatInfo']['incidentId'])
+                    entry['alert_id'] = str(note['threatInfo']['incidentId'])
     
                     if '\\' in device_name and splitDomain:
                         (domain_name, device) = device_name.split('\\')
-                        extension += ' sntdom=' + domain_name
-                        extension += ' dvchost=' + device
+                        entry['sntdom'] = domain_name
+                        entry['dvchost'] = device
                     else:
-                        extension += ' dvchost=' + device_name
+                        entry['dvchost'] = device_name
     
                     if '\\' in user_name and splitDomain:
                         (domain_name, user) = user_name.split('\\')
-                        extension += ' duser=' + user
+                        entry['duser'] = user
                     else:
-                        extension += ' duser=' + user_name
+                        entry['duser'] = user_name
     
-                    extension += ' dvc=' + device_ip
-                    extension += ' cs3Label="Link"'
-                    extension += ' cs3="' + link + '"'
-                    extension += ' cs4Label="Threat_ID"'
-                    extension += ' cs4="' + tid + '"'
-                    extension += ' act=Alert'
+                    entry['act'] = 'Alert'
     
                 elif note['type'] == 'POLICY_ACTION':
-                    signature = 'Policy_Action'
-                    name = 'Confer Sensor Policy Action'
-                    severity = policy_action_severity
-                    seconds = str(note['eventTime'])[:-3]
-                    timestamp = time.strftime("%b %d %Y %H:%M:%S", time.gmtime(int(seconds)))
-                    device_name = str(note['deviceInfo']['deviceName'])
+                    entry['signature'] = 'Policy_Action'
+                    entry['name'] = 'Confer Sensor Policy Action'
+                    entry['severity'] = 4
+                    entry['rt'] = str(note['eventTime'])
+                    entry['device_name'] = str(note['deviceInfo']['deviceName'])
                     user_name = str(note['deviceInfo']['email'])
-                    device_ip = str(note['deviceInfo']['internalIpAddress'])
-                    sha256 = str(note['policyAction']['sha256Hash'])
-                    action = str(note['policyAction']['action'])
-                    app_name = str(note['policyAction']['applicationName'])
+                    entry['device_ip'] = str(note['deviceInfo']['internalIpAddress'])
+                    entry['hash'] = str(note['policyAction']['sha256Hash'])
+                    entry['act'] = str(note['policyAction']['action'])
+                    entry['deviceprocessname'] = str(note['policyAction']['applicationName'])
                     link = str(note['url'])
-                    extension = ''
-                    extension += 'rt="' + timestamp + '"'
+                   
                     if '\\' in device_name and splitDomain == True:
                         (domain_name, device) = device_name.split('\\')
-                        extension += ' sntdom=' + domain_name
-                        extension += ' dvchost=' + device
+                        entry['sntdom'] = domain_name
+                        entry['dvchost'] = device
                     else:
-                        extension += ' dvchost=' + device_name
+                        entry['dvchost'] = device_name
     
                     if '\\' in user_name and splitDomain == True:
                         (domain_name, user) = user_name.split('\\')
-                        extension += ' duser=' + user
+                        entry['duser'] = user
                     else:
-                        extension += ' duser=' + user_name
+                        entry['duser'] = user_name
     
-                    extension += 'rt="' + timestamp + '"'
-                    extension += ' dvc=' + device_ip
-                    extension += ' cs3Label="Link"'
-                    extension += ' cs3="' + link + '"'
-                    extension += ' act=' + action
-                    extension += ' hash=' + sha256
-                    extension += ' deviceprocessname=' + app_name
+                    entry['dvc'] = device_ip
+                    entry['link'] = link
+                    entry['threat_id'] =  tid
+                    entry['deviceprocessname'] = app_name
     
                 else:
                     continue
-    
-                log_messages.append({'version': version,
-                                     'vendor': vendor,
-                                     'product': product,
-                                     'dev_version': dev_version,
-                                     'signature': signature,
-                                     'name': name,
-                                     'severity': severity,
-                                     'extension': extension,
-                                     'source': source})
+                entry['category'] = 'notification'
+                log_messages.append(entry)
         return log_messages
 
-
-    def cb_main(self): 
+    def cb_defense_siem_events(self):
+        # Handle SIEM Connector
         response = self.cb_defense_server_request(self.ds.config_get('cbdefense', 'server_url'),
-                                             self.ds.config_get('cbdefense', 'api_key'),
-                                             self.ds.config_get('cbdefense', 'connector_id'),
+            				     '/integrationServices/v3/notification',
+                                             self.ds.config_get('cbdefense_siem', 'api_key'),
+                                             self.ds.config_get('cbdefense_siem', 'connector_id'),
+                                             True)
+        if not response:
+            self.ds.log('WARNING', 
+                    "Received unexpected (or no) response from Cb Defense Server {0}.".format(
+                    self.ds.config_get('cbdefense', 'server_url')))
+            return None
+        json_response = json.loads(response.content)
+        #self.ds.log('DEBUG', json.dumps(json_response))
+        #json_response = self.read_input_file("notification.input")
+
+        #
+        # parse the Cb Defense Response and get a list of log messages to send
+        #
+        log_messages = self.parse_cb_defense_response_cef(json_response)
+        return log_messages
+
+    def cb_defense_alert_details(self, alert_id):
+        # Handle AUDIT Connector
+        response = self.cb_defense_server_request(self.ds.config_get('cbdefense', 'server_url'),
+                                             '/integrationServices/v3/alert/' + alert_id,
+                                             self.ds.config_get('cbdefense_api', 'api_key'),
+                                             self.ds.config_get('cbdefense_api', 'connector_id'),
+                                             True)
+        json_response = json.loads(response.content)
+        self.ds.log('DEBUG', json.dumps(json_response))
+        alert_details = {}
+
+        if u'success' not in json_response.keys():
+            return None
+        if json_response[u'success']:
+            alert_details['deviceInfo'] = json_response['deviceInfo']
+            alert_details['events'] = json_response['events']
+            alert_details['threatInfo'] = json_response['threatInfo']
+            return alert_details
+        return None
+
+    def cb_defense_audit_events(self):
+        # Handle AUDIT Connector
+        response = self.cb_defense_server_request(self.ds.config_get('cbdefense', 'server_url'),
+                                             '/integrationServices/v3/auditlogs',
+                                             self.ds.config_get('cbdefense_api', 'api_key'),
+                                             self.ds.config_get('cbdefense_api', 'connector_id'),
                                              True)
 
         if not response:
             self.ds.log('WARNING', 
                     "Received unexpected (or no) response from Cb Defense Server {0}.".format(
                     self.ds.config_get('cbdefense', 'server_url')))
-            return
+            return None
 
-        #
-        # perform fixups
-        #
-        # logger.debug(response.content)
         json_response = json.loads(response.content)
+        #json_response = self.read_input_file("audit.input")
 
-        #
-        # parse the Cb Defense Response and get a list of log messages to send to tcp_tls_host:tcp_tls_port
-        #
-        log_messages = self.parse_cb_defense_response_cef(json_response)
+        log_messages = []
+        if u'success' not in json_response.keys():
+            return log_messages
+        if json_response[u'success']:
+            if len(json_response[u'notifications']) < 1:
+                #self.ds.log('INFO', 'successfully connected, no audit logs at this time')
+                return None
+        entry = {}
+        audit_events = []
+        for log in json_response['notifications']:
+            entry = log
+            entry['category'] = 'audit events'
+            audit_events.extend([entry])
+            
+        return audit_events
 
-        if not log_messages:
-            self.ds.log('INFO', "There are no messages to forward to host")
+    def cb_main(self): 
+
+        #alert_details = self.cb_defense_alert_details('FV8GRSC7')
+
+        audit_log_messages = self.cb_defense_audit_events()
+        siem_log_messages = self.cb_defense_siem_events()
+
+        alert_details_messages = []
+        if siem_log_messages != None:
+            for log in siem_log_messages:
+                alert_details = self.cb_defense_alert_details(log['alert_id'])
+                if alert_details != None:
+                    alert_details_messages.extend([alert_details])
+  
+        if audit_log_messages == None:
+            self.ds.log('INFO', "There are no audit logs to send")
         else:
-            self.ds.log('INFO', "Sending {0} messages to {1}:{2}".format(len(log_messages),
-                                                                 output_params['output_host'],
-                                                                 output_params['output_port']))
-            #
-            # finally send the messages
-            #
-            for log in log_messages:
+            self.ds.log('INFO', "Sending {0} audit logs".format(len(audit_log_messages)))
+            for log in audit_log_messages:
+                self.ds.writeCEFEvent(type='Audit Log', dataDict=log, CEF_field_mappings=self.auditlogs_CEF_field_mappings, CEF_custom_field_labels=self.auditlogs_CEF_custom_field_labels)
+                #self.ds.writeEvent(json.dumps(log))
 
-                template = "{{source}}|{{version}}|{{vendor}}|{{product}}|{{dev_version}}|{{signature}}|{{name}}|{{severity}}|{{extension}}"
-                final_data = template.render(log)
+        if siem_log_messages == None:
+            self.ds.log('INFO', "There are no notifications to send")
+        else:
+            self.ds.log('INFO', "Sending {0} notifications".format(len(siem_log_messages)))
 
-                self.ds.writeEvent(final_data)
+            for log in siem_log_messages:
+                self.ds.writeCEFEvent(type='policy_action', dataDict=log, CEF_field_mappings=self.notifications_CEF_field_mappings, CEF_custom_field_labels=self.notifications_CEF_custom_field_labels)
+
+        if len(alert_details_messages) > 0:
+            for log in alert_details_messages:
+                self.ds.writeEvent(json.dumps(log))
 
         self.ds.log('INFO', "Done Sending Notifications")
 
@@ -212,6 +300,7 @@ class integration(object):
                 sys.exit(0)
             self.cb_main()
         except Exception as e:
+            traceback.print_exc()
             self.ds.log('ERROR', "Exception {0}".format(str(e)))
             return
     
