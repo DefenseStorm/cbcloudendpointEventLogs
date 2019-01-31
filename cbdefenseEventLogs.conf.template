@@ -8,10 +8,13 @@ SEVERITY = 5
 CEF_VERSION = CEF:0
 
 [cbdefense]
+server_url = https://api.conferdeploy.net/
+pid_file = /usr/local/cbdefenseEventLogs/cbdefenseEventLogs.pid
+
+[cbdefense_siem]
 connector_id = CONNECTORID
 api_key = APIKEY
-server_url = https://api.conferdeploy.net/
-pid_file = /usr/local/cbdefense/cbdefenseEventLogs.pid
 
-
-
+[cbdefense_api]
+connector_id = CONNECTORID
+api_key = APIKEY
