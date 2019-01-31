@@ -2,7 +2,7 @@ CB Defense Integration for DefenseStorm
 
 to pull this repository and submodules:
 
-git clone --recurse-submodules https://github.com/alexDefenseStorm/cbdefenseEventLogs.git
+git clone --recurse-submodules https://github.com/DefenseStorm/cbdefenseEventLogs.git
 
 1. If this is the first integration on this DVM, Do the following:
 
