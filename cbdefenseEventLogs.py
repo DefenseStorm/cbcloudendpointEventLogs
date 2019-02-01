@@ -80,7 +80,7 @@ class integration(object):
 
 
     def cb_defense_server_request(self, url, path, api_key, connector_id, ssl_verify, proxies=None):
-        self.ds.log('INFO', "Attempting to connect to url: " + url + path)
+        #self.ds.log('INFO', "Attempting to connect to url: " + url + path)
     
         headers = {'X-Auth-Token': "{0}/{1}".format(api_key, connector_id)}
         try:
@@ -206,7 +206,7 @@ class integration(object):
                                              self.ds.config_get('cbdefense_api', 'connector_id'),
                                              True)
         json_response = json.loads(response.content)
-        self.ds.log('DEBUG', json.dumps(json_response))
+        #self.ds.log('DEBUG', json.dumps(json_response))
         alert_details = {}
 
         if u'success' not in json_response.keys():
