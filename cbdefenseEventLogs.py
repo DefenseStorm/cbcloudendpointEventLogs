@@ -86,7 +86,7 @@ class integration(object):
         try:
             response = requests.get(url + path, headers=headers, timeout=15,
                                     verify=ssl_verify, proxies=proxies)
-            self.ds.log('INFO', response)
+            #self.ds.log('INFO', response)
         except Exception as e:
             self.ds.log('ERROR', "Exception {0}".format(str(e)))
             return None
