@@ -8,8 +8,50 @@ import json
 import requests
 import time
 
+from six import PY2
+
+if PY2:
+    get_unicode_string = unicode
+else:
+    get_unicode_string = str
+
 sys.path.insert(0, '/usr/local/cbdefenseEventLogs/ds-integration')
 from DefenseStorm import DefenseStorm
+
+from HTMLParser import HTMLParser
+
+class MLStripper(HTMLParser):
+    def __init__(self):
+        self.reset()
+        self.fed = []
+    def handle_data(self, d):
+        self.fed.append(d)
+    def get_data(self):
+        return ''.join(self.fed)
+
+def strip_tags(html):
+    s = MLStripper()
+    s.feed(html)
+    return s.get_data()
+
+
+def flatten_json(y):
+    out = {}
+
+    def flatten(x, name=''):
+        if type(x) is dict:
+            for a in x:
+                flatten(x[a], name + a + '_')
+        elif type(x) is list:
+            i = 0
+            for a in x:
+                flatten(a, name + str(i) + '_')
+                i += 1
+        else:
+            out[name[:-1]] = x
+
+    flatten(y)
+    return out
 
 class integration(object):
 
@@ -165,10 +207,10 @@ class integration(object):
                     else:
                         entry['duser'] = user_name
     
-                    entry['dvc'] = device_ip
+                    entry['dvc'] = entry['device_ip']
                     entry['link'] = link
-                    entry['threat_id'] =  tid
-                    entry['deviceprocessname'] = app_name
+                    #entry['threat_id'] =  get_unicode_string(note['threatInfo']['incidentId'])
+                    entry['deviceprocessname'] = get_unicode_string(note['policyAction']['applicationName'])
     
                 else:
                     continue
@@ -185,7 +227,7 @@ class integration(object):
                                              True)
         if not response:
             self.ds.log('WARNING', 
-                    "Received unexpected (or no) response from Cb Defense Server {0}.".format(
+                    "Received unexpected " + str(response) + " response from Cb Defense Server {0}.".format(
                     self.ds.config_get('cbdefense', 'server_url')))
             return None
         json_response = json.loads(response.content)
@@ -228,7 +270,7 @@ class integration(object):
 
         if not response:
             self.ds.log('WARNING', 
-                    "Received unexpected (or no) response from Cb Defense Server {0}.".format(
+                    "Received unexpected " + str(response) + " response from Cb Defense Server {0}.".format(
                     self.ds.config_get('cbdefense', 'server_url')))
             return None
 
@@ -259,11 +301,49 @@ class integration(object):
         siem_log_messages = self.cb_defense_siem_events()
 
         alert_details_messages = []
+        #siem_log_messages = [{'alert_id':'T1SNCENR'}]
         if siem_log_messages != None:
             for log in siem_log_messages:
                 alert_details = self.cb_defense_alert_details(log['alert_id'])
                 if alert_details != None:
+
+                    # Handle deviceInfo
+                    this_alert = {}
+                    for key in alert_details['deviceInfo'].keys():
+                        this_alert[key] = alert_details['deviceInfo'][key]
+                    this_alert['device_message'] = this_alert['message']
+                    this_alert['message'] = "Device Info for Alert ID: " + log['alert_id']
+                    alert_details_messages.extend([this_alert])
+
+                    # Handle Events
+                    for item in alert_details['events']:
+                        this_item = {}
+                        for key in item.keys():
+                            this_item[key] = item[key]
+                        this_item['message'] = "Event Info for Alert ID: " + log['alert_id']
+                        alert_details_messages.extend([this_item])
+
+                    # Handle threatInfo
+                    this_item = {}
+                    this_item['message'] = "Threat Info for Alert ID: " + log['alert_id']
+                    for key in alert_details['threatInfo'].keys():
+                        this_item[key] = alert_details['threatInfo'][key]
+                    del this_item['indicators']
+                    alert_details_messages.extend([this_item])
+
+                    # Handle threatInfo indicators
+                    for item in alert_details['threatInfo']['indicators']:
+                        this_item = {}
+                        this_item['message'] = "Threat Info Indicators for Alert ID: " + log['alert_id'] + " Threat ID: " + alert_details['threatInfo']['threatId']
+                        for key in item.keys():
+                            this_item[key] = item[key]
+                        alert_details_messages.extend([this_item])
+
+                    alert_details['message'] = "Alert Details for alert ID: " + log['alert_id']
                     alert_details_messages.extend([alert_details])
+
+
+        #siem_log_messages = None
   
         if audit_log_messages == None:
             self.ds.log('INFO', "There are no audit logs to send")
@@ -283,7 +363,7 @@ class integration(object):
 
         if len(alert_details_messages) > 0:
             for log in alert_details_messages:
-                self.ds.writeEvent(json.dumps(log))
+                self.ds.writeJSONEvent(json.loads(strip_tags(json.dumps(flatten_json(log)))))
 
         self.ds.log('INFO', "Done Sending Notifications")
 

@@ -1,5 +1,9 @@
 # conf file must be in same directory as script
 
+[json]
+app_name = CarbonBlack EventLogs
+version = 1.0
+
 [cef]
 VENDOR = carbonblack
 PRODUCT = EventLogs
