@@ -340,6 +340,7 @@ class integration(object):
                         alert_details_messages.extend([this_item])
 
                     alert_details['message'] = "Alert Details for alert ID: " + log['alert_id']
+                    alert_details['alert_id'] = log['alert_id']
                     alert_details_messages.extend([alert_details])
 
 
