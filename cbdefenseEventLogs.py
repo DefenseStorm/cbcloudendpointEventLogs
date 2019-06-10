@@ -55,6 +55,16 @@ def flatten_json(y):
 
 class integration(object):
 
+    JSON_field_mappings = {
+        'indicatorname' : 'indicator_name',
+        'applicationname' : 'application',
+        'threatscore' : 'threat_score',
+        'devicename' : 'device_name',
+        'policyname' : 'policy_name',
+        'importance' : 'severity'
+    }
+
+
     auditlogs_CEF_field_mappings = {
         'requestUrl': 'cs4',
         'eventTime': 'rt',
@@ -364,7 +374,7 @@ class integration(object):
 
         if len(alert_details_messages) > 0:
             for log in alert_details_messages:
-                self.ds.writeJSONEvent(json.loads(strip_tags(json.dumps(flatten_json(log)))))
+                self.ds.writeJSONEvent(json.loads(strip_tags(json.dumps(flatten_json(log)))), JSON_field_mappings = self.JSON_field_mappings)
 
         self.ds.log('INFO', "Done Sending Notifications")
 
