@@ -59,8 +59,8 @@ class integration(object):
         'indicatorname' : 'indicator_name',
         'applicationname' : 'application',
         'threatscore' : 'threat_score',
-        'devicename' : 'device_name',
-        'policyname' : 'policy_name',
+        'deviceName' : 'device_name',
+        'policyName' : 'policy_name',
         'importance' : 'severity'
     }
 
