@@ -56,12 +56,13 @@ def flatten_json(y):
 class integration(object):
 
     JSON_field_mappings = {
-        'indicatorname' : 'indicator_name',
-        'applicationname' : 'application',
-        'threatscore' : 'threat_score',
+        'indicatorName' : 'indicator_name',
+        'applicationName' : 'application',
+        'threatScore' : 'threat_score',
         'deviceName' : 'device_name',
         'policyName' : 'policy_name',
-        'importance' : 'severity'
+        'importance' : 'severity',
+        'incidentId' : 'event_id'
     }
 
 
