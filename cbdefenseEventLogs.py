@@ -198,6 +198,7 @@ class integration(object):
                     entry['severity'] = 4
                     entry['rt'] = str(note['eventTime'])
                     entry['device_name'] = str(note['deviceInfo']['deviceName'])
+                    device_name = str(note['deviceInfo']['deviceName'])
                     user_name = str(note['deviceInfo']['email'])
                     entry['device_ip'] = str(note['deviceInfo']['internalIpAddress'])
                     entry['hash'] = str(note['policyAction']['sha256Hash'])
