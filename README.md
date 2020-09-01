@@ -1,8 +1,8 @@
-CB Defense Integration for DefenseStorm
+CB Cloud Endpoint (formerly CB Defense)for DefenseStorm
 
 to pull this repository and submodules:
 
-git clone --recurse-submodules https://github.com/DefenseStorm/cbdefenseEventLogs.git
+git clone --recurse-submodules https://github.com/DefenseStorm/cbcloudendpointEventLogs.git
 
 1. If this is the first integration on this DVM, Do the following:
 
@@ -20,7 +20,7 @@ filter f_messages { level(info,notice,warn) and not facility(auth,authpriv,cron,
 
 2. Copy the template config file and update the settings
 
-  cp cbdefenseEventLogs.conf.template cbdefenseEventLogs.conf
+  cp cbcloudendpointEventLogs.conf.template cbcloudendpointEventLogs.conf
 
   change the following items in the config file based on your configuration
 
@@ -31,4 +31,4 @@ filter f_messages { level(info,notice,warn) and not facility(auth,authpriv,cron,
 3. Add the following entry to the root crontab so the script will run every
    5 minutes
 
-   */5 * * * * /usr/local/cbdefenseEventLogs/cbdefenseEventLogs.py
+   */5 * * * * cd /usr/local/cbcloudendpointEventLogs; ./cbcloudendpointEventLogs.py
