@@ -46,8 +46,6 @@ class integration(object):
 
     JSON_field_mappings = {
         'indicatorName' : 'indicator_name',
-        'applicationName' : 'application',
-        'threatScore' : 'threat_score',
         'deviceName' : 'device_name',
         'policyName' : 'policy_name',
         'importance' : 'severity',
@@ -63,7 +61,8 @@ class integration(object):
         'deviceType' : 'os_type',
         'deviceVersion' : 'os_version',
         'type' : 'category',
-        'eventDescription' : 'description'
+        'eventDescription' : 'description',
+        'deviceId' : 'device_id'
     }
 
     def read_input_file(self, filename):
@@ -192,6 +191,9 @@ class integration(object):
                         note['userName'] = user
                     else:
                         note['userName'] = user_name
+
+                    if 'time' in note.keys():
+                        del note['time']
     
                     #entry['act'] = 'Alert'
     
