@@ -62,7 +62,9 @@ class integration(object):
         'deviceVersion' : 'os_version',
         'type' : 'category',
         'eventDescription' : 'description',
-        'deviceId' : 'device_id'
+        'deviceId' : 'device_id',
+        'file_sha256' : 'sha256hash',
+        'file_sha256' : 'actor'
     }
 
     def read_input_file(self, filename):
