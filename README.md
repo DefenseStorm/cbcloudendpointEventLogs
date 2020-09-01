@@ -24,9 +24,24 @@ filter f_messages { level(info,notice,warn) and not facility(auth,authpriv,cron,
 
   change the following items in the config file based on your configuration
 
-    connector_id
-    api_key
-    server_url
+  The first two settings are for your organization.  The server_url is the base URL for accessing
+  the CB Cloud web interface.  The org_key is your org_key as shows on the Settings-API
+  configuraiton screen.
+
+	org_key    
+	server_url
+
+  You will need to generate 3 pairs of Connector IDs and API Keys:
+    (1) Access Level Type: API - this for audit log data
+    (2) Access Level Type: SIEM - this for notifications
+    (3) Access Level Type: Custom - this for additional event data.  Addionally for this key
+        you will need to configure the Access Levels for this custom key.  You need Category 
+        Alerts, Permission General Information and READ access.  Create this Access Level before
+        creating the custom API key.
+
+  Put the appropriate connector_id and api_key in each of hte 3 sections in the conf file's
+	connector_id
+	api_key
 
 3. Add the following entry to the root crontab so the script will run every
    5 minutes
