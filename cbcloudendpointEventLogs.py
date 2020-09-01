@@ -259,7 +259,7 @@ class integration(object):
         json_response = json.loads(response.content)
         #with open("notification.input", "w") as notifications:
             #notifications.write(json.dumps(json_response))
-        json_response = self.read_input_file("notification.input")
+        #json_response = self.read_input_file("notification.input")
 
         #
         # parse the Cb Defense Response and get a list of log messages to send
