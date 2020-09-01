@@ -1,24 +1,25 @@
 # conf file must be in same directory as script
 
 [json]
-app_name = CarbonBlack EventLogs
+app_name = CB Cloud Endpoint EventLogs
 version = 1.0
 
-[cef]
-VENDOR = carbonblack
-PRODUCT = EventLogs
-VERSION = 1.0
-SEVERITY = 5
-CEF_VERSION = CEF:0
+[cb]
+server_url = 
+pid_file = ./cbcloudendpointEventLogs.pid
+org_key = 
 
-[cbdefense]
-server_url = https://api.conferdeploy.net/
-pid_file = /usr/local/cbdefenseEventLogs/cbdefenseEventLogs.pid
+#This is used for Notifications
+[cb_siem]
+connector_id = 
+api_key = 
 
-[cbdefense_siem]
-connector_id = CONNECTORID
-api_key = APIKEY
+#This is used for Audit logs
+[cb_api]
+connector_id = 
+api_key = 
 
-[cbdefense_api]
-connector_id = CONNECTORID
-api_key = APIKEY
+#This is used for the new Event API
+[cb_custom]
+connector_id = 
+api_key = 
