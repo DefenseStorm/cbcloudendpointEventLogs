@@ -148,6 +148,8 @@ class integration(object):
                         this_item['event_id'] = note['incidentId']
                         for key in ti.keys():
                             this_item[key] = ti[key]
+                        this_item['category'] = 'THREAT'
+                        this_item['timestamp'] = note['eventTime']
                         note_indicators.extend([this_item])
                     del note['indicators']
 
