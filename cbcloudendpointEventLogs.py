@@ -56,13 +56,14 @@ class integration(object):
         'eventTime' : 'timestamp',
         'ruleName' : 'rule_name',
         'threatCategory' : 'threat_type',
-        'internalIpAddress' : 'ip_local',
+        'internalIpAddress' : 'endpoint_ip',
         'externalIpAddress' : 'nat_translation',
         'targetPriorityType' : 'severity',
         'groupName' : 'group_name',
         'deviceType' : 'os_type',
         'deviceVersion' : 'os_version',
-        'type' : 'category'
+        'type' : 'category',
+        'eventDescription' : 'description'
     }
 
     def read_input_file(self, filename):
@@ -184,13 +185,11 @@ class integration(object):
                     else:
                         note['deviceName'] = device_name
    
-                    '''
                     if '\\' in user_name and splitDomain:
                         (domain_name, user) = user_name.split('\\')
                         note['userName'] = user
                     else:
                         note['userName'] = user_name
-                    '''
     
                     #entry['act'] = 'Alert'
     
