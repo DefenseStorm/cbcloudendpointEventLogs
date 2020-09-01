@@ -36,6 +36,14 @@ def strip_tags(html):
 
 class integration(object):
 
+    audit_JSON_field_mappings = {
+        'description' : 'message',
+        'eventTime' : 'timestamp',
+        'eventId' : 'event_id',
+        'loginName' : 'username',
+        'orgName' : 'organization'
+    }
+
     JSON_field_mappings = {
         'indicatorName' : 'indicator_name',
         'applicationName' : 'application',
@@ -43,7 +51,18 @@ class integration(object):
         'deviceName' : 'device_name',
         'policyName' : 'policy_name',
         'importance' : 'severity',
-        'incidentId' : 'event_id'
+        'incidentId' : 'event_id',
+        'summary' : 'message',
+        'eventTime' : 'timestamp',
+        'ruleName' : 'rule_name',
+        'threatCategory' : 'threat_type',
+        'internalIpAddress' : 'ip_local',
+        'externalIpAddress' : 'nat_translation',
+        'targetPriorityType' : 'severity',
+        'groupName' : 'group_name',
+        'deviceType' : 'os_type',
+        'deviceVersion' : 'os_version',
+        'type' : 'category'
     }
 
     def read_input_file(self, filename):
@@ -111,33 +130,80 @@ class integration(object):
                     note['type'] = 'THREAT'
     
                 if note['type'] == 'THREAT':
+
+                    # Handle threatInfo
+                    this_item = {}
+                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
+                    for key in note['threatInfo'].keys():
+                        note[key] = note['threatInfo'][key]
+                    del note['threatInfo']
+
+
+                    # Handle threat indicators
+                    note_indicators = []
+                    for ti in note['indicators']:
+                        this_item = {}
+                        this_item['message'] = "Threat Indicators for Alert ID: " + note['incidentId']
+                        this_item['event_id'] = note['incidentId']
+                        for key in ti.keys():
+                            this_item[key] = ti[key]
+                        note_indicators.extend([this_item])
+                    del note['indicators']
+
+                    # Handle threatCause
+                    this_item = {}
+                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
+                    for key in note['threatCause'].keys():
+                        note[key] = note['threatCause'][key]
+                    del note['threatCause']
+
+                    # Handle deviceInfo
+                    this_item = {}
+                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
+                    for key in note['deviceInfo'].keys():
+                        note[key] = note['deviceInfo'][key]
+                    del note['deviceInfo']
+
+                    '''
                     entry['signature'] = 'Active_Threat'
                     entry['rt'] = str(note['eventTime'])
                     entry['name'] = str(note['threatInfo']['summary'])
                     entry['severity'] = str(note['threatInfo']['score'])
-                    device_name = str(note['deviceInfo']['deviceName'])
-                    user_name = str(note['deviceInfo']['email'])
                     entry['dvc'] = str(note['deviceInfo']['internalIpAddress'])
                     entry['link'] = str(note['url'])
                     entry['threat_id'] = str(note['threatInfo']['incidentId'])
                     entry['alert_id'] = str(note['threatInfo']['incidentId'])
+                    '''
     
+                    device_name = str(note['deviceName'])
+                    user_name = str(note['email'])
                     if '\\' in device_name and splitDomain:
                         (domain_name, device) = device_name.split('\\')
-                        entry['sntdom'] = domain_name
-                        entry['dvchost'] = device
+                        note['domainName'] = domain_name
+                        note['deviceName'] = device
                     else:
-                        entry['dvchost'] = device_name
-    
+                        note['deviceName'] = device_name
+   
+                    '''
                     if '\\' in user_name and splitDomain:
                         (domain_name, user) = user_name.split('\\')
-                        entry['duser'] = user
+                        note['userName'] = user
                     else:
-                        entry['duser'] = user_name
+                        note['userName'] = user_name
+                    '''
     
-                    entry['act'] = 'Alert'
+                    #entry['act'] = 'Alert'
     
                 elif note['type'] == 'POLICY_ACTION':
+
+                    # Handle policyAction
+                    this_item = {}
+                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
+                    for key in note['policyAction'].keys():
+                        note[key] = note['policyAction'][key]
+                    del note['policyAction']
+
+                    '''
                     entry['signature'] = 'Policy_Action'
                     entry['name'] = 'Confer Sensor Policy Action'
                     entry['severity'] = 4
@@ -168,11 +234,14 @@ class integration(object):
                     entry['link'] = link
                     #entry['threat_id'] =  get_unicode_string(note['threatInfo']['incidentId'])
                     entry['deviceprocessname'] = get_unicode_string(note['policyAction']['applicationName'])
+                    '''
     
                 else:
                     continue
                 entry['category'] = 'notification'
-                log_messages.append(entry)
+                log_messages.append(note)
+                for item in note_indicators:
+                    log_messages.append(item)
         return log_messages
 
     def cb_defense_siem_events(self):
@@ -190,7 +259,7 @@ class integration(object):
         json_response = json.loads(response.content)
         #with open("notification.input", "w") as notifications:
             #notifications.write(json.dumps(json_response))
-        #json_response = self.read_input_file("notification.input")
+        json_response = self.read_input_file("notification.input")
 
         #
         # parse the Cb Defense Response and get a list of log messages to send
@@ -262,17 +331,19 @@ class integration(object):
         audit_log_messages = self.cb_defense_audit_events()
         siem_log_messages = self.cb_defense_siem_events()
 
+        '''
         alert_details_messages = []
         #siem_log_messages = [{'alert_id':'T1SNCENR'}]
         if siem_log_messages != None:
             for log in siem_log_messages:
-                alert_details = self.cb_defense_alert_details(log['alert_id'])
+                print(json.dumps(log))
+                alert_details = self.cb_defense_alert_details(log['incidentId'])
                 if alert_details != None:
                     for item in alert_details:
 
                         # Handle threat indicators
                         this_item = {}
-                        this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
+                        this_item['message'] = "Threat Indicators for Alert ID: " + log['incidentId']
                         for ti in item['threat_indicators']:
                             this_item = {}
                             for key in ti.keys():
@@ -280,16 +351,17 @@ class integration(object):
                             #del this_item['indicators']
                             alert_details_messages.extend([this_item])
 
-                        item['message'] = "Alert Details for alert ID: " + log['alert_id']
-                        item['alert_id'] = log['alert_id']
+                        item['message'] = "Alert Details for alert ID: " + log['incidentId']
+                        item['incidentId'] = log['incidentId']
                         alert_details_messages.extend([item])
+        '''
 
         if audit_log_messages == None:
             self.ds.log('INFO', "There are no audit logs to send")
         else:
             self.ds.log('INFO', "Sending {0} audit logs".format(len(audit_log_messages)))
             for log in audit_log_messages:
-                self.ds.writeJSONEvent(log)
+                self.ds.writeJSONEvent(log, JSON_field_mappings = self.audit_JSON_field_mappings)
 
         if siem_log_messages == None:
             self.ds.log('INFO', "There are no notifications to send")
@@ -297,12 +369,13 @@ class integration(object):
             self.ds.log('INFO', "Sending {0} notifications".format(len(siem_log_messages)))
 
             for log in siem_log_messages:
-                self.ds.writeJSONEvent(log)
-
+                self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
+        '''
         if len(alert_details_messages) > 0:
             self.ds.log('INFO', "Sending {0} alert details".format(len(alert_details_messages)))
             for log in alert_details_messages:
                 self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
+        '''
 
         self.ds.log('INFO', "Done Sending Notifications")
 
