@@ -41,7 +41,7 @@ class integration(object):
         'eventTime' : 'timestamp',
         'eventId' : 'event_id',
         'loginName' : 'username',
-        'orgName' : 'organization'
+        'orgName' : 'organization_name'
     }
 
     JSON_field_mappings = {
