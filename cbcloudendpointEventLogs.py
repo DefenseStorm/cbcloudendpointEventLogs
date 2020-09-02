@@ -63,7 +63,6 @@ class integration(object):
         'type' : 'category',
         'eventDescription' : 'description',
         'deviceId' : 'device_id',
-        'sha256hash' : 'file_sha256',
         'actor' : 'file_sha256',
         'applicationName' : 'application'
     }
@@ -152,6 +151,8 @@ class integration(object):
                             this_item[key] = ti[key]
                         this_item['category'] = 'THREAT'
                         this_item['timestamp'] = note['eventTime']
+                        this_item['file_sha256'] = this_item['sha256hash']
+                        del this_item['sha256hash']
                         note_indicators.extend([this_item])
                     del note['indicators']
 
