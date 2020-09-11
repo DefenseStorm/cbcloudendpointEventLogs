@@ -73,6 +73,56 @@ class integration(object):
         else:
             return response
 
+
+    def cb_cloud_event_request(self, event_id, ssl_verify=True, proxies=None):
+        alerts_url = self.url + "/api/investigate/v2/orgs/" + self.org_key + "/enriched_events/search_jobs"
+        self.ds.log('INFO', "Attempting to connect to url: " + alerts_url)
+
+        request_body = {
+                    "query": "event_id:" + event_id
+                }
+
+        headers = {'X-Auth-Token': "{0}/{1}".format(self.custom_api_key, self.custom_connector_id), 'Content-type':'application/json'}
+
+        try:
+            response = requests.post(alerts_url, headers=headers, data=json.dumps(request_body), timeout=15,
+                                    verify=ssl_verify, proxies=proxies)
+        except Exception as e:
+            self.ds.log('ERROR', "Exception {0}".format(str(e)))
+            return None
+        if not response or response.status_code != 200:
+            self.ds.log('WARNING', 
+                    "Received unexpected " + str(response) + " response from Cb Defense Server {0}.".format(
+                    alerts_url))
+            return None
+        else:
+            json_results = response.json()
+            job_id = json_results['job_id']
+
+            path = "/api/investigate/v2/orgs/" + self.org_key + "/enriched_events/search_jobs/" + job_id + "/results"
+
+            while True:
+
+                response = self.cb_defense_server_request(self.url,
+            				     path,
+                                             self.custom_api_key,
+                                             self.custom_connector_id,
+                                             True)
+                if not response or response.status_code != 200:
+                    self.ds.log('WARNING', 
+                        "Received unexpected " + str(response) + " response from Cb Defense Server {0}.".format(
+                        self.ds.config_get('cb', 'server_url')))
+                    return None
+
+                json_response = json.loads(response.content)
+                if json_response['completed'] == json_response['contacted']:
+                    break
+                else:
+                    time.sleep(5)
+
+            return json_response['results'] 
+
+
     def cb_cloud_alerts_request(self, legacy_alert_id, ssl_verify=True, proxies=None):
         alerts_url = self.url + "/appservices/v6/orgs/" + self.org_key + "/alerts/_search"
         self.ds.log('INFO', "Attempting to connect to url: " + alerts_url)
@@ -93,11 +143,11 @@ class integration(object):
         if not response or response.status_code != 200:
             self.ds.log('WARNING', 
                     "Received unexpected " + str(response) + " response from Cb Defense Server {0}.".format(
-                    alert_url))
+                    alerts_url))
             return None
         else:
-            return response
-    
+            return response.json()['results']
+
     def parse_cb_defense_response_cef(self, response):
         splitDomain = True
     
@@ -266,6 +316,24 @@ class integration(object):
         audit_log_messages = self.cb_defense_audit_events()
         siem_log_messages = self.cb_defense_siem_events()
 
+        alert_events = None
+        event_details = []
+
+        #siem_log_messages = []
+        #siem_log_messages.append({'event_id':'A4CMF9CV'})
+
+        if siem_log_messages != None:
+            for notification in siem_log_messages:
+                if 'event_id' not in notification.keys():
+                    self.ds.log('INFO', "Notification missing event_id")
+                    continue
+                alert_events = self.cb_cloud_alerts_request(legacy_alert_id = notification['event_id'])
+                for alert in alert_events:
+                    alert['message'] = "Alert Details for Alert ID " + notification['event_id']
+                    events = self.cb_cloud_event_request(event_id = alert['created_by_event_id'])
+                    for event in events:
+                        event['message'] = "Event Details for Alert ID " + notification['event_id']
+                        event_details.append(event)
 
         if audit_log_messages == None:
             self.ds.log('INFO', "There are no audit logs to send")
@@ -281,6 +349,17 @@ class integration(object):
 
             for log in siem_log_messages:
                 self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
+
+        if alert_events == None:
+            self.ds.log('INFO', "There are no alert details to send")
+        else:
+            self.ds.log('INFO', "Sending {0} alert details and {1} event details".format(len(alert_events), len(event_details)))
+
+            for log in alert_events:
+                self.ds.writeJSONEvent(log)
+            for log in event_details:
+                self.ds.writeJSONEvent(log)
+
 
         self.ds.log('INFO', "Done Sending Notifications")
 
