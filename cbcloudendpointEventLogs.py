@@ -330,9 +330,15 @@ class integration(object):
                 alert_events = self.cb_cloud_alerts_request(legacy_alert_id = notification['event_id'])
                 for alert in alert_events:
                     alert['message'] = "Alert Details for Alert ID " + notification['event_id']
+                    if 'event_id' in alert.keys():
+                        alert['cb_event_id'] = alert['event_id']
+                    alert['event_id'] = notification['event_id']
                     events = self.cb_cloud_event_request(event_id = alert['created_by_event_id'])
                     for event in events:
                         event['message'] = "Event Details for Alert ID " + notification['event_id']
+                        if 'event_id' in event.keys():
+                            event['cb_event_id'] = event['event_id']
+                        event['event_id'] = notification['event_id']
                         event_details.append(event)
 
         if audit_log_messages == None:
