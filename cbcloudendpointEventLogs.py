@@ -320,13 +320,33 @@ class integration(object):
         event_details = []
 
         #siem_log_messages = []
-        #siem_log_messages.append({'event_id':'A4CMF9CV'})
+        #siem_log_messages.append({'event_id':'DJZF6ZKZ', 'causeEventId': 'c99452e1f77011eaa304938035c7405e'})
 
         if siem_log_messages != None:
             for notification in siem_log_messages:
                 if 'event_id' not in notification.keys():
                     self.ds.log('INFO', "Notification missing event_id")
                     continue
+                if 'causeEventId' not in notification.keys():
+                    self.ds.log('INFO', "Notification missing causeEventId")
+                    continue
+                events = self.cb_cloud_event_request(event_id = notification['causeEventId'])
+                if len(events) > 0:
+                    if 'process_name' in events[0].keys():
+                        notification['process_name'] = events[0]['process_name']
+                    if 'event_description' in events[0].keys():
+                        notification['event_description'] = events[0]['event_description']
+
+                '''
+                for event in events:
+                    event['message'] = "Event Details for Alert ID " + notification['event_id']
+                    if 'event_id' in event.keys():
+                        event['cb_event_id'] = event['event_id']
+                    event['event_id'] = notification['event_id']
+                    event_details.append(event)
+
+
+
                 alert_events = self.cb_cloud_alerts_request(legacy_alert_id = notification['event_id'])
                 for alert in alert_events:
                     alert['message'] = "Alert Details for Alert ID " + notification['event_id']
@@ -340,6 +360,7 @@ class integration(object):
                             event['cb_event_id'] = event['event_id']
                         event['event_id'] = notification['event_id']
                         event_details.append(event)
+                '''
 
         if audit_log_messages == None:
             self.ds.log('INFO', "There are no audit logs to send")
@@ -356,6 +377,7 @@ class integration(object):
             for log in siem_log_messages:
                 self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
 
+        '''
         if alert_events == None:
             self.ds.log('INFO', "There are no alert details to send")
         else:
@@ -365,6 +387,7 @@ class integration(object):
                 self.ds.writeJSONEvent(log)
             for log in event_details:
                 self.ds.writeJSONEvent(log)
+        '''
 
 
         self.ds.log('INFO', "Done Sending Notifications")
