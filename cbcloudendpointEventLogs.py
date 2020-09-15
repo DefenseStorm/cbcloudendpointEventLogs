@@ -77,6 +77,7 @@ class integration(object):
     def cb_cloud_event_request(self, event_id, ssl_verify=True, proxies=None):
         alerts_url = self.url + "/api/investigate/v2/orgs/" + self.org_key + "/enriched_events/search_jobs"
         self.ds.log('INFO', "Attempting to connect to url: " + alerts_url)
+        self.ds.log('INFO', "Getting enriched-events for id: " + event_id)
 
         request_body = {
                     "query": "event_id:" + event_id
@@ -120,6 +121,7 @@ class integration(object):
                 else:
                     time.sleep(5)
 
+            self.ds.log('INFO', "Received enriched-events count: " + str(len(json_response['results'])))
             return json_response['results'] 
 
 
@@ -176,7 +178,7 @@ class integration(object):
                         note[key] = note['threatInfo'][key]
                     del note['threatInfo']
 
-
+                    '''
                     # Handle threat indicators
                     note_indicators = []
                     for ti in note['indicators']:
@@ -191,6 +193,7 @@ class integration(object):
                             this_item['file_sha256'] = this_item['sha256hash']
                             del this_item['sha256hash']
                         note_indicators.extend([this_item])
+                    '''
                     del note['indicators']
 
                     # Handle threatCause
@@ -240,8 +243,10 @@ class integration(object):
                     continue
                 entry['category'] = 'notification'
                 log_messages.append(note)
+                '''
                 for item in note_indicators:
                     log_messages.append(item)
+                '''
         return log_messages
 
     def cb_defense_siem_events(self):
@@ -324,18 +329,29 @@ class integration(object):
 
         if siem_log_messages != None:
             for notification in siem_log_messages:
-                if 'event_id' not in notification.keys():
-                    self.ds.log('INFO', "Notification missing event_id")
+                if 'incidentId' not in notification.keys():
+                    self.ds.log('INFO', "Notification missing incidentId")
                     continue
                 if 'causeEventId' not in notification.keys():
                     self.ds.log('INFO', "Notification missing causeEventId")
                     continue
-                events = self.cb_cloud_event_request(event_id = notification['causeEventId'])
+                events = []
+                counter = 0
+                while len(events) == 0 and counter < 5:
+                    events = self.cb_cloud_event_request(event_id = notification['causeEventId'])
+                    time.sleep(10)
+                    counter = counter + 1
                 if len(events) > 0:
                     if 'process_name' in events[0].keys():
                         notification['process_name'] = events[0]['process_name']
+                    else:
+                        self.ds.log('INFO', "Event missing process_name")
                     if 'event_description' in events[0].keys():
                         notification['event_description'] = events[0]['event_description']
+                    else:
+                        self.ds.log('INFO', "Event missing event_description")
+                else:
+                    self.ds.log('INFO', "No Events found for notification")
 
                 '''
                 for event in events:
