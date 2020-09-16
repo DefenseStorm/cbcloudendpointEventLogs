@@ -1,5 +1,14 @@
 CB Cloud Endpoint (formerly CB Defense)for DefenseStorm
 
+This integration provides several enhancements over the integration provided in the CB provided cbc_syslog.  Specifically:
+
+- Additional request is made to the API to pull the process_name and 
+  event_desciption from the associate causeEventId and include that
+  information with the notification
+
+- Add data is sent to GRID in JSON format
+
+
 to pull this repository and submodules:
 
 git clone --recurse-submodules https://github.com/DefenseStorm/cbcloudendpointEventLogs.git
