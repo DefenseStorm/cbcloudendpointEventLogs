@@ -7,6 +7,7 @@ import fcntl
 import json
 import requests
 import time
+import re
 
 from six import PY2
 
@@ -58,6 +59,12 @@ class integration(object):
             data = file.readlines()
         file.close()
         return json.loads(data[0])
+
+
+    def cleanhtml(self, raw_html):
+        cleanr = re.compile('<.*?>')
+        cleantext = re.sub(cleanr, '', raw_html)
+        return cleantext
 
 
     def cb_defense_server_request(self, url, path, api_key, connector_id, ssl_verify, proxies=None):
@@ -177,23 +184,6 @@ class integration(object):
                     for key in note['threatInfo'].keys():
                         note[key] = note['threatInfo'][key]
                     del note['threatInfo']
-
-                    '''
-                    # Handle threat indicators
-                    note_indicators = []
-                    for ti in note['indicators']:
-                        this_item = {}
-                        this_item['message'] = "Threat Indicators for Alert ID: " + note['incidentId']
-                        this_item['event_id'] = note['incidentId']
-                        for key in ti.keys():
-                            this_item[key] = ti[key]
-                        this_item['category'] = 'THREAT'
-                        this_item['timestamp'] = note['eventTime']
-                        if "sha256hash" in this_item.keys():
-                            this_item['file_sha256'] = this_item['sha256hash']
-                            del this_item['sha256hash']
-                        note_indicators.extend([this_item])
-                    '''
                     del note['indicators']
 
                     # Handle threatCause
@@ -324,9 +314,6 @@ class integration(object):
         alert_events = None
         event_details = []
 
-        #siem_log_messages = []
-        #siem_log_messages.append({'event_id':'DJZF6ZKZ', 'causeEventId': 'c99452e1f77011eaa304938035c7405e'})
-
         if siem_log_messages != None:
             for notification in siem_log_messages:
                 if 'incidentId' not in notification.keys():
@@ -347,36 +334,11 @@ class integration(object):
                     else:
                         self.ds.log('INFO', "Event missing process_name")
                     if 'event_description' in events[0].keys():
-                        notification['event_description'] = events[0]['event_description']
+                        notification['event_description'] = self.cleanhtml(events[0]['event_description'])
                     else:
                         self.ds.log('INFO', "Event missing event_description")
                 else:
                     self.ds.log('INFO', "No Events found for notification")
-
-                '''
-                for event in events:
-                    event['message'] = "Event Details for Alert ID " + notification['event_id']
-                    if 'event_id' in event.keys():
-                        event['cb_event_id'] = event['event_id']
-                    event['event_id'] = notification['event_id']
-                    event_details.append(event)
-
-
-
-                alert_events = self.cb_cloud_alerts_request(legacy_alert_id = notification['event_id'])
-                for alert in alert_events:
-                    alert['message'] = "Alert Details for Alert ID " + notification['event_id']
-                    if 'event_id' in alert.keys():
-                        alert['cb_event_id'] = alert['event_id']
-                    alert['event_id'] = notification['event_id']
-                    events = self.cb_cloud_event_request(event_id = alert['created_by_event_id'])
-                    for event in events:
-                        event['message'] = "Event Details for Alert ID " + notification['event_id']
-                        if 'event_id' in event.keys():
-                            event['cb_event_id'] = event['event_id']
-                        event['event_id'] = notification['event_id']
-                        event_details.append(event)
-                '''
 
         if audit_log_messages == None:
             self.ds.log('INFO', "There are no audit logs to send")
@@ -392,18 +354,6 @@ class integration(object):
 
             for log in siem_log_messages:
                 self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
-
-        '''
-        if alert_events == None:
-            self.ds.log('INFO', "There are no alert details to send")
-        else:
-            self.ds.log('INFO', "Sending {0} alert details and {1} event details".format(len(alert_events), len(event_details)))
-
-            for log in alert_events:
-                self.ds.writeJSONEvent(log)
-            for log in event_details:
-                self.ds.writeJSONEvent(log)
-        '''
 
 
         self.ds.log('INFO', "Done Sending Notifications")
