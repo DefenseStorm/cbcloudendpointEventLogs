@@ -15,7 +15,7 @@ git clone --recurse-submodules https://github.com/DefenseStorm/cbcloudendpointEv
 
 1. If this is the first integration on this DVM, Do the following:
 
-  cp ds-integration/ds_events.conf to /etc/syslog-ng/conf.d
+  cp ds-integration/ds_events.conf /etc/syslog-ng/conf.d
 
   Edit /etc/syslog-ng/syslog-ng.conf and add local7 to the excluded list for filter f_syslog3 and filter f_messages. The lines should look like the following:
 
@@ -45,10 +45,10 @@ filter f_messages { level(info,notice,warn) and not facility(auth,authpriv,cron,
     (2) Access Level Type: SIEM - this for notifications
     (3) Access Level Type: Custom - this for additional event data.  Addionally for this key
         you will need to configure the Access Levels for this custom key.  You need Category 
-        Alerts, Permission General Information and READ access.  Create this Access Level before
+        Alerts, Permission General Information and READ access and Query Create and Read Create this Access Level before
         creating the custom API key.
 
-  Put the appropriate connector_id and api_key in each of hte 3 sections in the conf file's
+  Put the appropriate connector_id and api_key in each of the 3 sections in the conf file's
 	connector_id
 	api_key
 
