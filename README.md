@@ -45,8 +45,8 @@ filter f_messages { level(info,notice,warn) and not facility(auth,authpriv,cron,
     (2) Access Level Type: SIEM - this for notifications
     (3) Access Level Type: Custom - this for additional event data.  Addionally for this key
         you will need to configure the Access Levels for this custom key.  You need Category 
-        Alerts, Permission General Information and READ access and Query Create and Read Create this Access Level before
-        creating the custom API key.
+        Alerts, Permission General Information and READ access and Search Create and Read.
+	Create this Access Level before creating the custom API key.
 
   Put the appropriate connector_id and api_key in each of the 3 sections in the conf file's
 	connector_id
