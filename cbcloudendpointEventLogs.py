@@ -108,7 +108,7 @@ class integration(object):
             job_id = json_results['job_id']
 
             path = "/api/investigate/v2/orgs/" + self.org_key + "/enriched_events/search_jobs/" + job_id + "/results"
-
+            counter = 0
             while True:
 
                 response = self.cb_defense_server_request(self.url,
@@ -125,7 +125,13 @@ class integration(object):
                 json_response = json.loads(response.content)
                 if json_response['completed'] == json_response['contacted']:
                     break
+                elif counter > 12:
+                    self.ds.log('WARNING', 
+                        "Query did not complete in 60 seconds from Cb Defense Server {0}.".format(
+                        self.ds.config_get('cb', 'server_url')))
+                    return None
                 else:
+                    counter += 1
                     time.sleep(5)
 
             self.ds.log('INFO', "Received enriched-events count: " + str(len(json_response['results'])))
