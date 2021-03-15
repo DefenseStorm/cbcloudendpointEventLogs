@@ -340,6 +340,7 @@ class integration(object):
             timer_exceeded = False
             for notification in siem_log_messages:
                 notification['type'] = 'threat_details'
+                notification['summary'] = 'Details - ' + notification['summary']
                 if timer_exceeded or (time.time() > (self.ds.start + self.max_run_time)):
                     timer_exceeded = True
                     self.ds.log('INFO', 'Timer Exceeded.  Skipping ' + notification['causeEventId'])
