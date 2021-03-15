@@ -125,14 +125,14 @@ class integration(object):
                 json_response = json.loads(response.content)
                 if json_response['completed'] == json_response['contacted']:
                     break
-                elif counter > 12:
+                elif counter > 30:
                     self.ds.log('WARNING', 
                         "Query did not complete in 60 seconds from Cb Defense Server {0}.".format(
                         self.ds.config_get('cb', 'server_url')))
                     return None
                 else:
                     counter += 1
-                    time.sleep(5)
+                    time.sleep(2)
 
             self.ds.log('INFO', "Received enriched-events count: " + str(len(json_response['results'])))
             return json_response['results'] 
@@ -237,7 +237,7 @@ class integration(object):
 
                 else:
                     continue
-                entry['category'] = 'notification'
+                entry['type'] = 'notification'
                 log_messages.append(note)
                 '''
                 for item in note_indicators:
@@ -297,7 +297,7 @@ class integration(object):
         audit_events = []
         for log in json_response['notifications']:
             entry = log
-            entry['category'] = 'audit events'
+            entry['type'] = 'audit events'
             audit_events.extend([entry])
             
         return audit_events
@@ -314,7 +314,6 @@ class integration(object):
         self.custom_connector_id = self.ds.config_get('cb_custom', 'connector_id')
         self.max_run_time = int(self.ds.config_get('cb', 'max_run_time'))
 
-        audit_log_messages = self.cb_defense_audit_events()
         siem_log_messages = self.cb_defense_siem_events()
 
         alert_events = None
@@ -328,6 +327,8 @@ class integration(object):
             for log in siem_log_messages:
                 self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
 
+        audit_log_messages = self.cb_defense_audit_events()
+
         if audit_log_messages == None:
             self.ds.log('INFO', "There are no audit logs to send")
         else:
@@ -338,9 +339,12 @@ class integration(object):
         if siem_log_messages != None:
             timer_exceeded = False
             for notification in siem_log_messages:
+                notification['type'] = 'threat_details'
                 if timer_exceeded or (time.time() > (self.ds.start + self.max_run_time)):
                     timer_exceeded = True
                     self.ds.log('INFO', 'Timer Exceeded.  Skipping ' + notification['causeEventId'])
+                    notification['event_description'] = 'Timer Exceeded.  No extended details available'
+                    self.ds.writeJSONEvent(notification, JSON_field_mappings = self.JSON_field_mappings)
                     continue
                 if 'incidentId' not in notification.keys():
                     self.ds.log('INFO', "Notification missing incidentId")
@@ -354,10 +358,13 @@ class integration(object):
                     if timer_exceeded or (time.time() > (self.ds.start + self.max_run_time)):
                         timer_exceeded = True
                         self.ds.log('INFO', 'Timer Exceeded.  Skipping ' + notification['causeEventId'])
+                        notification['event_description'] = 'Timer Exceeded.  No extended details available'
                         break
                     events = self.cb_cloud_event_request(event_id = notification['causeEventId'])
-                    time.sleep(10)
-                    counter = counter + 1
+                    print(len(events))
+                    if len(events) == 0:
+                        time.sleep(2)
+                        counter = counter + 1
                 if len(events) > 0:
                     if 'process_name' in events[0].keys():
                         notification['process_name'] = events[0]['process_name']
@@ -370,6 +377,7 @@ class integration(object):
                 else:
                     self.ds.log('INFO', "No Events found for notification")
 
+                self.ds.writeJSONEvent(notification, JSON_field_mappings = self.JSON_field_mappings)
 
         self.ds.log('INFO', "Done Sending Notifications")
 
