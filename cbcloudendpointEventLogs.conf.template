@@ -8,6 +8,7 @@ version = 1.0
 server_url = 
 pid_file = ./cbcloudendpointEventLogs.pid
 org_key = 
+max_run_time = 240
 
 #This is used for Notifications
 [cb_siem]

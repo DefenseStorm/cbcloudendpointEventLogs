@@ -281,7 +281,6 @@ class integration(object):
             self.ds.log('WARNING', 
                     "Received unexpected " + str(response) + " response from Cb Defense Server {0}.".format(audit_url))
             return None
-
         json_response = json.loads(response.content)
         #with open("audit.input", "w") as notifications:
         #    notifications.write(json.dumps(json_response))
@@ -313,6 +312,7 @@ class integration(object):
         self.siem_connector_id = self.ds.config_get('cb_siem', 'connector_id')
         self.custom_api_key = self.ds.config_get('cb_custom', 'api_key')
         self.custom_connector_id = self.ds.config_get('cb_custom', 'connector_id')
+        self.max_run_time = int(self.ds.config_get('cb', 'max_run_time'))
 
         audit_log_messages = self.cb_defense_audit_events()
         siem_log_messages = self.cb_defense_siem_events()
@@ -320,8 +320,28 @@ class integration(object):
         alert_events = None
         event_details = []
 
+        if siem_log_messages == None:
+            self.ds.log('INFO', "There are no notifications to send")
+        else:
+            self.ds.log('INFO', "Sending {0} notifications".format(len(siem_log_messages)))
+
+            for log in siem_log_messages:
+                self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
+
+        if audit_log_messages == None:
+            self.ds.log('INFO', "There are no audit logs to send")
+        else:
+            self.ds.log('INFO', "Sending {0} audit logs".format(len(audit_log_messages)))
+            for log in audit_log_messages:
+                self.ds.writeJSONEvent(log, JSON_field_mappings = self.audit_JSON_field_mappings)
+
         if siem_log_messages != None:
+            timer_exceeded = False
             for notification in siem_log_messages:
+                if timer_exceeded or (time.time() > (self.ds.start + self.max_run_time)):
+                    timer_exceeded = True
+                    self.ds.log('INFO', 'Timer Exceeded.  Skipping ' + notification['causeEventId'])
+                    continue
                 if 'incidentId' not in notification.keys():
                     self.ds.log('INFO', "Notification missing incidentId")
                     continue
@@ -331,6 +351,10 @@ class integration(object):
                 events = []
                 counter = 0
                 while len(events) == 0 and counter < 5:
+                    if timer_exceeded or (time.time() > (self.ds.start + self.max_run_time)):
+                        timer_exceeded = True
+                        self.ds.log('INFO', 'Timer Exceeded.  Skipping ' + notification['causeEventId'])
+                        continue
                     events = self.cb_cloud_event_request(event_id = notification['causeEventId'])
                     time.sleep(10)
                     counter = counter + 1
@@ -345,21 +369,6 @@ class integration(object):
                         self.ds.log('INFO', "Event missing event_description")
                 else:
                     self.ds.log('INFO', "No Events found for notification")
-
-        if audit_log_messages == None:
-            self.ds.log('INFO', "There are no audit logs to send")
-        else:
-            self.ds.log('INFO', "Sending {0} audit logs".format(len(audit_log_messages)))
-            for log in audit_log_messages:
-                self.ds.writeJSONEvent(log, JSON_field_mappings = self.audit_JSON_field_mappings)
-
-        if siem_log_messages == None:
-            self.ds.log('INFO', "There are no notifications to send")
-        else:
-            self.ds.log('INFO', "Sending {0} notifications".format(len(siem_log_messages)))
-
-            for log in siem_log_messages:
-                self.ds.writeJSONEvent(log, JSON_field_mappings = self.JSON_field_mappings)
 
 
         self.ds.log('INFO', "Done Sending Notifications")
