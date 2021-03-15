@@ -354,7 +354,7 @@ class integration(object):
                     if timer_exceeded or (time.time() > (self.ds.start + self.max_run_time)):
                         timer_exceeded = True
                         self.ds.log('INFO', 'Timer Exceeded.  Skipping ' + notification['causeEventId'])
-                        continue
+                        break
                     events = self.cb_cloud_event_request(event_id = notification['causeEventId'])
                     time.sleep(10)
                     counter = counter + 1
