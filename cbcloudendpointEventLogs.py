@@ -38,6 +38,7 @@ class integration(object):
         'importance' : 'severity',
         'incidentId' : 'event_id',
         'summary' : 'message',
+        'description' : 'message',
         'eventTime' : 'timestamp',
         'ruleName' : 'rule_name',
         'threatCategory' : 'threat_type',
@@ -185,23 +186,17 @@ class integration(object):
                 if note['type'] == 'THREAT':
 
                     # Handle threatInfo
-                    this_item = {}
-                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
                     for key in note['threatInfo'].keys():
                         note[key] = note['threatInfo'][key]
                     del note['threatInfo']
                     del note['indicators']
 
                     # Handle threatCause
-                    this_item = {}
-                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
                     for key in note['threatCause'].keys():
                         note[key] = note['threatCause'][key]
                     del note['threatCause']
 
                     # Handle deviceInfo
-                    this_item = {}
-                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
                     for key in note['deviceInfo'].keys():
                         note[key] = note['deviceInfo'][key]
                     del note['deviceInfo']
@@ -229,11 +224,13 @@ class integration(object):
                 elif note['type'] == 'POLICY_ACTION':
 
                     # Handle policyAction
-                    this_item = {}
-                    #this_item['message'] = "Threat Indicators for Alert ID: " + log['alert_id']
                     for key in note['policyAction'].keys():
                         note[key] = note['policyAction'][key]
                     del note['policyAction']
+
+                    for key in note['deviceInfo'].keys():
+                        note[key] = note['deviceInfo'][key]
+                    del note['deviceInfo']
 
                 else:
                     continue
