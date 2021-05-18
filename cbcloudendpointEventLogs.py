@@ -231,6 +231,9 @@ class integration(object):
                     for key in note['deviceInfo'].keys():
                         note[key] = note['deviceInfo'][key]
                     del note['deviceInfo']
+                    if 'description' in note.keys():
+                        note['message'] = note['description']
+                        del note['description']
 
                 else:
                     continue
